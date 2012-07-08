@@ -55,7 +55,8 @@
 		t.join
 	end
 	
-	r.each do |l|
+	(opt_M..opt_m).each do |ttl|
+		l = r[ttl]
 		next unless l
 		puts l
 		if l.index(addr)
