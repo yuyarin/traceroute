@@ -1,0 +1,64 @@
+#!/opt/local/bin/ruby1.9
+
+	exit if ARGV.size < 1
+	
+	option = ''
+	opt_M = 1
+	opt_m = 30
+	host = nil
+	packetsize = 40
+	i = 0
+	
+	while i < ARGV.size
+		arg = ARGV[i]
+		if /-(\w+)/ =~ ARGV[i]
+			val = ARGV[i+1]
+			if $1 == 'm'
+				opt_m = val.to_i
+			elsif $1 == 'M'
+				opt_M = val.to_i
+			else
+				option += "-#{$1} #{val} "
+			end
+			i += 1
+		else
+			unless host
+				host = ARGV[i]
+			else
+				packetsize = ARGV[i]
+			end
+		end
+		i += 1
+	end
+	
+	exit unless host
+	
+	r = []
+	threads = []
+	addr = ''
+	
+	header = `/usr/sbin/traceroute -n -q 1 -M 1 -m 1 #{host} 2>&1 1>/dev/null`
+	if /traceroute to ([^\s]+) \(([0-9\.]+)\),/ =~ header
+		addr = $2
+		puts header
+	end
+	exit unless addr
+	
+	(opt_M..opt_m).each do |ttl|
+		threads << Thread.new do
+			cmd = "/usr/sbin/traceroute #{option} -M #{ttl} -m #{ttl} #{addr} 2> /dev/null"
+			r[ttl] = `#{cmd}`
+		end
+	end
+	
+	threads.each do |t|
+		t.join
+	end
+	
+	r.each do |l|
+		next unless l
+		puts l
+		if l.index(addr)
+			break
+		end
+	end
